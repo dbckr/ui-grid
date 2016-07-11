@@ -67,6 +67,8 @@
             // Put the container name on this element as a class
             $elm.addClass('ui-grid-render-container-' + $scope.containerId);
 
+			// Scroll here intereferes with bootstrap dropdown in custom header filter template. Don't need wheel to scroll rows when mouse is over the header area.
+			/*
             // Scroll the render container viewport when the mousewheel is used
             gridUtil.on.mousewheel($elm, function (event) {
               var scrollEvent = new ScrollEvent(grid, rowContainer, colContainer, ScrollEvent.Sources.RenderContainerMouseWheel);
@@ -118,7 +120,8 @@
               }
 
             });
-
+			*/
+			
             $elm.bind('$destroy', function() {
               $elm.unbind('keydown');
 
