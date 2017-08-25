@@ -1,26 +1,28 @@
 describe('ui.grid.treeBase uiGridTreeBaseService', function () {
-  var uiGridTreeBaseService;
-  var uiGridTreeBaseConstants;
-  var gridClassFactory;
-  var grid;
-  var $rootScope;
-  var $scope;
-  var GridRow;
-  var gridUtil;
-  var uiGridConstants;
+  var uiGridTreeBaseService,
+      uiGridTreeBaseConstants,
+      gridClassFactory,
+      grid,
+      $rootScope,
+      $scope,
+      GridRow,
+      gridUtil,
+      uiGridConstants;
 
-  beforeEach(module('ui.grid.treeBase'));
+  beforeEach(function() {
+    module('ui.grid.treeBase');
 
-  beforeEach(inject(function (_uiGridTreeBaseService_,_gridClassFactory_, $templateCache, _uiGridTreeBaseConstants_,
-                              _$rootScope_, _GridRow_, _gridUtil_, _uiGridConstants_) {
-    uiGridTreeBaseService = _uiGridTreeBaseService_;
-    uiGridTreeBaseConstants = _uiGridTreeBaseConstants_;
-    gridClassFactory = _gridClassFactory_;
-    $rootScope = _$rootScope_;
+    inject(function (_uiGridTreeBaseService_,_gridClassFactory_, $templateCache, _uiGridTreeBaseConstants_,
+      _$rootScope_, _GridRow_, _gridUtil_, _uiGridConstants_) {
+      uiGridTreeBaseService = _uiGridTreeBaseService_;
+      uiGridTreeBaseConstants = _uiGridTreeBaseConstants_;
+      gridClassFactory = _gridClassFactory_;
+      $rootScope = _$rootScope_;
+      GridRow = _GridRow_;
+      gridUtil = _gridUtil_;
+      uiGridConstants = _uiGridConstants_;
+    });
     $scope = $rootScope.$new();
-    GridRow = _GridRow_;
-    gridUtil = _gridUtil_;
-    uiGridConstants = _uiGridConstants_;
 
     grid = gridClassFactory.createGrid({});
     grid.options.columnDefs = [
@@ -30,6 +32,7 @@ describe('ui.grid.treeBase uiGridTreeBaseService', function () {
       {field: 'col3'}
     ];
 
+    spyOn(grid, 'addRowHeaderColumn').and.callThrough();
     uiGridTreeBaseService.initializeGrid(grid, $scope);
     $scope.$apply();
 
@@ -44,24 +47,11 @@ describe('ui.grid.treeBase uiGridTreeBaseService', function () {
     data[7].$$treeLevel = 0;
     data[9].$$treeLevel = 1;
 
-//    data = [
-//      { col0: 'a_0', col1: 0, col2: 'c_0', col3: 0, '$$treeLevel': 0 } ,
-//      { col0: 'a_0', col1: 0, col2: 'c_1', col3: 1, '$$treeLevel': 1 },
-//      { col0: 'a_0', col1: 1, col2: 'c_2', col3: 2 },
-//      { col0: 'a_0', col1: 1, col2: 'c_3', col3: 3, '$$treeLevel': 1 },
-//      { col0: 'a_1', col1: 2, col2: 'c_4', col3: 4, '$$treeLevel': 2 },
-//      { col0: 'a_1', col1: 2, col2: 'c_5', col3: 5 },
-//      { col0: 'a_1', col1: 3, col2: 'c_6', col3: 6 },
-//      { col0: 'a_1', col1: 3, col2: 'c_7', col3: 7, '$$treeLevel': 0 },
-//      { col0: 'a_2', col1: 4, col2: 'c_8', col3: 8 },
-//      { col0: 'a_2', col1: 4, col2: 'c_9', col3: 9, '$$treeLevel': 1 }
-//    ];
-
     grid.options.data = data;
 
     grid.buildColumns();
     grid.modifyRows(grid.options.data);
-  }));
+  });
 
 
   describe( 'initializeGrid and defaultGridOptions', function() {
@@ -69,7 +59,7 @@ describe('ui.grid.treeBase uiGridTreeBaseService', function () {
       var previousRowsProcessors = grid.rowsProcessors.length;
       uiGridTreeBaseService.initializeGrid( grid, $scope );
 
-      expect( grid.treeBase ).toEqual( { numberLevels : 0, expandAll : false, tree : {} }, 'grid.treeBase should be defaulted' );
+      expect( grid.treeBase ).toEqual( { numberLevels : 0, expandAll : false, tree : [] }, 'grid.treeBase should be defaulted' );
       expect( grid.api.treeBase.expandAllRows ).toEqual( jasmine.any(Function), 'expandAllRows should be defined as an example function' );
       expect( grid.api.treeBase.on.rowExpanded ).toEqual( jasmine.any(Function), 'rowExpanded should be defined as an example event' );
 
@@ -86,8 +76,12 @@ describe('ui.grid.treeBase uiGridTreeBaseService', function () {
         showTreeRowHeader: true,
         showTreeExpandNoChildren: true,
         treeRowHeaderAlwaysVisible: true,
-        treeCustomAggregations: {}
+        treeCustomAggregations: {},
+        enableExpandAll: true
       });
+    });
+    it('should call addRowHeaderColumn', function() {
+      expect(grid.addRowHeaderColumn).toHaveBeenCalledWith(jasmine.any(Object), -100);
     });
   });
 
@@ -348,34 +342,38 @@ describe('ui.grid.treeBase uiGridTreeBaseService', function () {
     });
 
 
-    it( 'create tree with ten rows including leaf nodes and aggregations', function() {
-      var rows = [
-        { uid: 1, entity: { $$treeLevel: 0, col3: 5 }, visible: true },
-        { uid: 2, entity: { $$treeLevel: 1, col3: 7 }, visible: true },
-        { uid: '2-1', entity: { col3: 11 }, visible: true },
-        { uid: 3, entity: { $$treeLevel: 0, col3: null }, visible: true },
-        { uid: '3-1', entity: { col3: 2 }, visible: true },
-        { uid: 4, entity: { $$treeLevel: 1, col3: 20 }, visible: true },
-        { uid: '4-1', entity: { col3: 9 }, visible: true },
-        { uid: '4-2', entity: { col3: 11 }, visible: true },
-        { uid: 5, entity: { $$treeLevel: 1, col3: 'test' }, visible: true },
-        { uid: '5-1', entity: { col3: 21 }, visible: true }
-      ];
+    describe( 'create tree with ten rows including leaf nodes and aggregations', function() {
+      var rows;
+      beforeEach(function () {
+        rows = [
+          { uid: 1, entity: { $$treeLevel: 0, col3: 5 }, visible: true },
+          { uid: 2, entity: { $$treeLevel: 1, col3: 7 }, visible: true },
+          { uid: '2-1', entity: { col3: 11 }, visible: true },
+          { uid: 3, entity: { $$treeLevel: 0, col3: null }, visible: true },
+          { uid: '3-1', entity: { col3: 2 }, visible: true },
+          { uid: 4, entity: { $$treeLevel: 1, col3: 20 }, visible: true },
+          { uid: '4-1', entity: { col3: 9 }, visible: true },
+          { uid: '4-2', entity: { col3: 11 }, visible: true },
+          { uid: 5, entity: { $$treeLevel: 1, col3: 'test' }, visible: true },
+          { uid: '5-1', entity: { col3: 21 }, visible: true }
+        ];
+        spyOn( grid, 'getCellValue').and.callFake( function( row, col ) { return row.entity.col3; } );
+      });
 
-      spyOn( grid, 'getCellValue').andCallFake( function( row, col ) { return row.entity.col3; } );
+      it('', function() {
+        grid.columns[3].treeAggregationType = 'sum';
+        grid.columns[3].uid = 'col3';
 
-      grid.columns[3].treeAggregationType = 'sum';
-      grid.columns[3].uid = 'col3';
+        var tree = uiGridTreeBaseService.createTree( grid, rows );
 
-      var tree = uiGridTreeBaseService.createTree( grid, rows );
+        // overall settings
+        expect( grid.treeBase.numberLevels).toEqual(2, 'two levels in the tree');
 
-      // overall settings
-      expect( grid.treeBase.numberLevels).toEqual(2, 'two levels in the tree');
+        // rows
+        expect( rows.length ).toEqual( 10, 'still only 10 rows' );
 
-      // rows
-      expect( rows.length ).toEqual( 10, 'still only 10 rows' );
-
-      // some more checking of aggregations would be nice, but they've been unit tested at the function level
+        // some more checking of aggregations would be nice, but they've been unit tested at the function level
+      });
     });
   });
 
@@ -394,7 +392,7 @@ describe('ui.grid.treeBase uiGridTreeBaseService', function () {
 
       uiGridTreeBaseService.addOrUseNode( grid, fakeRow, parents, aggregations );
 
-      expect( grid.treeBase.tree ).toEqual( [ { 
+      expect( grid.treeBase.tree ).toEqual( [ {
         state: 'collapsed',
         row: fakeRow,
         parentRow: null,
@@ -446,12 +444,12 @@ describe('ui.grid.treeBase uiGridTreeBaseService', function () {
         treeLevel: 1
       };
 
-      grid.treeBase.tree = [{ 
-        state: 'expanded', 
-        row: fakeRootRow, 
-        parentRow: null, 
+      grid.treeBase.tree = [{
+        state: 'expanded',
+        row: fakeRootRow,
+        parentRow: null,
         aggregations: [],
-        children: [] 
+        children: []
       }];
 
       fakeRootRow.treeNode = grid.treeBase.tree[0];
@@ -461,7 +459,7 @@ describe('ui.grid.treeBase uiGridTreeBaseService', function () {
 
       uiGridTreeBaseService.addOrUseNode( grid, fakeRow, parents, aggregations );
 
-      expect( grid.treeBase.tree[0].children[0] ).toEqual( { 
+      expect( grid.treeBase.tree[0].children[0] ).toEqual( {
         state: 'collapsed',
         row: fakeRow,
         parentRow: fakeRootRow,
@@ -487,11 +485,11 @@ describe('ui.grid.treeBase uiGridTreeBaseService', function () {
       };
 
       grid.treeBase.tree = [{
-        state: 'expanded', 
-        row: fakeRootRow, 
-        parentRow: null, 
+        state: 'expanded',
+        row: fakeRootRow,
+        parentRow: null,
         aggregations: [],
-        children: [] 
+        children: []
       }];
 
       fakeRootRow.treeNode = grid.treeBase.tree[0];
@@ -501,7 +499,7 @@ describe('ui.grid.treeBase uiGridTreeBaseService', function () {
 
       uiGridTreeBaseService.addOrUseNode( grid, fakeRow, parents, aggregations );
 
-      expect( grid.treeBase.tree[0].children[0] ).toEqual( { 
+      expect( grid.treeBase.tree[0].children[0] ).toEqual( {
         state: 'expanded',
         row: fakeRow,
         parentRow: fakeRootRow,
@@ -527,7 +525,7 @@ describe('ui.grid.treeBase uiGridTreeBaseService', function () {
 
       uiGridTreeBaseService.addOrUseNode( grid, fakeRow, parents, aggregations );
 
-      expect( grid.treeBase.tree[0] ).toEqual( { 
+      expect( grid.treeBase.tree[0] ).toEqual( {
         state: 'collapsed',
         row: fakeRow,
         parentRow: null,
@@ -550,10 +548,10 @@ describe('ui.grid.treeBase uiGridTreeBaseService', function () {
       };
 
       grid.treeBase.tree = [{
-        state: 'expanded', 
-        row: fakeRootRow, 
-        parentRow: null, 
-        children: [] 
+        state: 'expanded',
+        row: fakeRootRow,
+        parentRow: null,
+        children: []
       }];
 
       fakeRootRow.treeNode = grid.treeBase.tree[0];
@@ -563,7 +561,7 @@ describe('ui.grid.treeBase uiGridTreeBaseService', function () {
 
       uiGridTreeBaseService.addOrUseNode( grid, fakeRow, parents, aggregations );
 
-      expect( grid.treeBase.tree[0].children[0] ).toEqual( { 
+      expect( grid.treeBase.tree[0].children[0] ).toEqual( {
         state: 'collapsed',
         row: fakeRow,
         parentRow: fakeRootRow,
@@ -715,11 +713,11 @@ describe('ui.grid.treeBase uiGridTreeBaseService', function () {
       expect( result[1].col.name ).toEqual('col2', 'col2 is second aggregation');
       delete result[1].col;
       expect( result ).toEqual([
-        { 
+        {
           type: 'sum',
           label: 'total: '
         },
-        { 
+        {
           label: 'custom- '
         }
       ]);

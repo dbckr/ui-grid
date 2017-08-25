@@ -2,7 +2,7 @@ language: node_js
 sudo: false # defaults to sending build to container-based infrastructure on Travis
 
 node_js:
-  - '0.10'
+  - 4
 
 notifications:
   webhooks:
@@ -30,7 +30,8 @@ env:
 branches:
   only:
     - master
-    - /^3\.0$/
+    - /^4\.0$/
+    - /^4\.x$/
     - /^release-.*$/
 
 before_install:
@@ -61,4 +62,5 @@ after_failure:
   - ./travis_print_logs.sh
 
 after_script:
+  - killall -9 sc
   - ./travis_print_logs.sh

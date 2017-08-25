@@ -1,5 +1,5 @@
 describe('uiGridRow', function () {
-  var grid, data, columnDefs, $scope, $compile, $document, recompile, uiGridConstants, GridRow, gridUtil;
+  var grid, data, columnDefs, $scope, $compile, $document, recompile, uiGridConstants, GridRow, gridUtil, $timeout;
 
   data = [
     { "name": "Bob", "age": 35 },
@@ -15,13 +15,14 @@ describe('uiGridRow', function () {
 
   beforeEach(module('ui.grid'));
 
-  beforeEach(inject(function (_$compile_, $rootScope, _$document_, _uiGridConstants_, _GridRow_, _gridUtil_) {
+  beforeEach(inject(function (_$compile_, $rootScope, _$document_, _uiGridConstants_, _GridRow_, _gridUtil_, _$timeout_) {
     $scope = $rootScope;
     $compile = _$compile_;
     $document = _$document_;
     uiGridConstants = _uiGridConstants_;
     GridRow = _GridRow_;
     gridUtil = _gridUtil_;
+    $timeout = _$timeout_;
 
     $scope.gridOpts = {
       columnDefs: columnDefs,
@@ -73,23 +74,26 @@ describe('uiGridRow', function () {
       expect(thirdRow.text()).toEqual('The name is: Sam');
     });
 
-    it('should change templates properly after a sort', function () {
+    describe('should change templates properly after a sort', function () {
       var refreshed = false;
-      runs(function () {
+      beforeEach(function(done) {
         $scope.gridApi.grid.sortColumn($scope.gridApi.grid.columns[0], uiGridConstants.ASC)
           .then(function () {
-            $scope.gridApi.grid.refresh();
-            refreshed = true;
-          });
+            $scope.gridApi.grid.refresh().then(function(){
+              refreshed = true;
+              setTimeout(function() {
+                done();
+              }, 750);
 
+            });
+          });
         $scope.$digest();
+        $timeout.flush();
       });
 
-      waitsFor(function () { return refreshed; }, 10000);
-
-      runs(function () {
+      it("should have the forth row with text", function() {
+        expect(refreshed).toBeTruthy();
         var fourthRow = $(grid).find('.ui-grid-row:nth-child(4)');
-
         expect(fourthRow.text()).toEqual('The name is: Sam');
       });
     });
